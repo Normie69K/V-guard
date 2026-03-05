@@ -20,7 +20,7 @@ fun AppNavigation(startDestination : String = "splash") {
                 navController.navigate("dashboard") { popUpTo("splash") { inclusive = true } }
             })
         }
-        
+
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {

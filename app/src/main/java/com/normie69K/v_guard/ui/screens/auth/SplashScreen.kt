@@ -10,19 +10,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-// import com.google.firebase.auth.FirebaseAuth
+import com.normie69K.v_guard.data.repository.AuthRepository
 
 @Composable
 fun SplashScreen(onNavigateToLogin: () -> Unit, onNavigateToDashboard: () -> Unit) {
 
+    val authRepository = AuthRepository()
+
     LaunchedEffect(Unit) {
-        delay(2000) // 2-second delay for the branding to show
+        delay(2000)
 
-        // TODO: Uncomment when Firebase is added
-        // val currentUser = FirebaseAuth.getInstance().currentUser
-        val currentUser = null // Simulating no user for now
-
-        if (currentUser != null) {
+        // Check if the user is already authenticated
+        if (authRepository.isUserLoggedIn()) {
             onNavigateToDashboard()
         } else {
             onNavigateToLogin()
@@ -33,11 +32,18 @@ fun SplashScreen(onNavigateToLogin: () -> Unit, onNavigateToDashboard: () -> Uni
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "GuardianDrive",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "V-Guard",
+                fontSize = 40.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Vehicle Safety System",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
