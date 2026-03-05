@@ -8,7 +8,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -31,7 +33,8 @@ import com.normie69K.v_guard.data.repository.AuthRepository
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToPhoneAuth: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit
 ) {
     // REQUIRED FOR GOOGLE LOGIN:
     val context = LocalContext.current
@@ -43,6 +46,9 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading       by remember { mutableStateOf(false) }
     var errorMessage    by remember { mutableStateOf("") }
+
+    // Scroll state for handling the keyboard
+    val scrollState = rememberScrollState()
 
     // Fixed the double ".apps.googleusercontent.com"
     val webClientId = "132500161718-7hqjuonnarjnlsomg58b7efebpl7egim.apps.googleusercontent.com"
@@ -107,7 +113,9 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 28.dp),
+            .imePadding() // Automatically adds padding when keyboard opens
+            .verticalScroll(scrollState) // Allows scrolling
+            .padding(horizontal = 28.dp, vertical = 24.dp), // Added vertical padding for extra buffer
         verticalArrangement    = Arrangement.Center,
         horizontalAlignment    = Alignment.CenterHorizontally
     ) {
@@ -166,6 +174,13 @@ fun LoginScreen(
             singleLine          = true,
             isError             = errorMessage.isNotEmpty()
         )
+
+        // ── Forgot Password Link ──────────────────────────────────────────────
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            TextButton(onClick = onNavigateToForgotPassword) {
+                Text("Forgot Password?", color = MaterialTheme.colorScheme.primary)
+            }
+        }
 
         // ── Error message ─────────────────────────────────────────────────────
         AnimatedVisibility(
@@ -238,7 +253,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // ── Google Auth Button (MISSING IN YOUR SNIPPET) ──────────────────────
+        // ── Google Auth Button ──────────────────────
         OutlinedButton(
             onClick  = { launchGoogleSignIn() },
             modifier = Modifier.fillMaxWidth().height(56.dp),

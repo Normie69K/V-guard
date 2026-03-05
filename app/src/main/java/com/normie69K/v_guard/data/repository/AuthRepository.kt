@@ -77,6 +77,18 @@ class AuthRepository {
             .addOnFailureListener { e -> onFailure(e.message ?: "Google Sign-in failed") }
     }
 
+    // ── Forgot Password ───────────────────────────────────────────────────────
+
+    fun sendPasswordResetEmail(
+        email: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        auth.sendPasswordResetEmail(email)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e -> onFailure(e.message ?: "Failed to send reset email") }
+    }
+
     // ── Sign out ──────────────────────────────────────────────────────────────
 
     fun logout() = auth.signOut()

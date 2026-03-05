@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat // <-- YOU MUST ADD THIS IMPORT
 import com.normie69K.v_guard.services.AccidentMonitorService
 import com.normie69K.v_guard.ui.navigation.AppNavigation
 import com.normie69K.v_guard.ui.theme.VguardTheme
@@ -25,6 +26,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ── Let Compose handle the system windows and keyboard smoothly ──
+        WindowCompat.setDecorFitsSystemWindows(window, false) // <-- ADD THIS LINE
 
         requestRequiredPermissions()
         startMonitoringService()

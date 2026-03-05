@@ -28,6 +28,7 @@ import java.util.*
 fun DashboardScreen(
     onCrashDetected: (lat: Double, lng: Double) -> Unit,
     onLogout: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
 ) {
     val status by viewModel.vehicleStatus.collectAsState()
@@ -62,6 +63,7 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding()
     ) {
         // ── Top bar ──────────────────────────────────────────────────────────
         Row(
@@ -87,6 +89,11 @@ fun DashboardScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(isAlert)
                 Spacer(Modifier.width(8.dp))
+
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(Icons.Default.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
                 IconButton(onClick = onLogout) {
                     Icon(Icons.Default.Logout, "Logout", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

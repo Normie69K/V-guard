@@ -15,6 +15,8 @@ import com.normie69K.v_guard.ui.screens.dashboard.DashboardScreen
 import com.normie69K.v_guard.ui.screens.setup.EmergencyContactsScreen
 import com.normie69K.v_guard.ui.screens.setup.LinkDeviceScreen
 import com.normie69K.v_guard.ui.screens.auth.RegisterScreen
+import com.normie69K.v_guard.ui.screens.auth.ForgotPasswordScreen // <-- ADDED THIS IMPORT
+import com.normie69K.v_guard.ui.screens.settings.SettingsScreen
 
 @Composable
 fun AppNavigation(startDestination: String = "splash") {
@@ -36,14 +38,21 @@ fun AppNavigation(startDestination: String = "splash") {
         }
 
         // ── Login (email/password) ────────────────────────────────────────────
-// ── Login (email/password) ────────────────────────────────────────────
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
                     navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
                 },
                 onNavigateToPhoneAuth = { navController.navigate("otp") },
-                onNavigateToRegister = { navController.navigate("register") } // <-- Add this line
+                onNavigateToRegister = { navController.navigate("register") },
+                onNavigateToForgotPassword = { navController.navigate("forgot_password") }
+            )
+        }
+
+        // ── Forgot Password (new) ─────────────────────────────────────────────
+        composable("forgot_password") {
+            ForgotPasswordScreen(
+                onBackToLogin = { navController.popBackStack() }
             )
         }
 
@@ -105,7 +114,19 @@ fun AppNavigation(startDestination: String = "splash") {
                     navController.navigate("login") {
                         popUpTo("dashboard") { inclusive = true }
                     }
+                },
+                onNavigateToSettings = {
+                    navController.navigate("settings")
                 }
+            )
+        }
+
+        // ── Settings ──────────────────────────────────────────────────────────
+        composable("settings") {
+            SettingsScreen(
+                onNavigateToLinkDevice = { navController.navigate("link_device") },
+                onNavigateToContacts   = { navController.navigate("emergency_contacts") },
+                onBack                 = { navController.popBackStack() }
             )
         }
 
