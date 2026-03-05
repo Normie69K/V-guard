@@ -20,13 +20,29 @@ fun AppNavigation(startDestination : String = "splash") {
                 navController.navigate("dashboard") { popUpTo("splash") { inclusive = true } }
             })
         }
+        
         composable("login") {
-            LoginScreen(onLoginSuccess = {
-                // After login, we usually check if a device is linked.
-                // For now, let's navigate to the linking screen.
-                navController.navigate("link_device")
-            })
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate("link_device") { popUpTo("login") { inclusive = true } }
+                },
+                onNavigateToPhoneAuth = {
+                    navController.navigate("otp") // Routes to our new screen
+                }
+            )
         }
+
+        composable("otp") {
+            OtpScreen(
+                onBackToLogin = {
+                    navController.popBackStack()
+                },
+                onAuthSuccess = {
+                    navController.navigate("link_device") { popUpTo("login") { inclusive = true } }
+                }
+            )
+        }
+
         composable("link_device") {
             // LinkDeviceScreen()
         }
