@@ -1,6 +1,7 @@
 package com.normie69K.v_guard.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.FirebaseDatabase
 import com.normie69K.v_guard.data.models.User
 
@@ -51,6 +52,29 @@ class AuthRepository {
         val uid = auth.currentUser?.uid ?: return
         val user = User(uid = uid, name = name, email = email)
         usersRef.child(uid).setValue(user)
+    }
+
+    // ── Sign-in with Google ───────────────────────────────────────────────────
+
+    fun signInWithGoogle(
+        idToken: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnSuccessListener { result ->
+                if (result.additionalUserInfo?.isNewUser == true) {
+                    val user = result.user
+                    if (user != null) {
+                        val name = user.displayName ?: "V-Guard User"
+                        val email = user.email ?: ""
+                        createUserProfile(name, email)
+                    }
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { e -> onFailure(e.message ?: "Google Sign-in failed") }
     }
 
     // ── Sign out ──────────────────────────────────────────────────────────────

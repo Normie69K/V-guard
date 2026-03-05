@@ -14,6 +14,7 @@ import com.normie69K.v_guard.ui.screens.dashboard.AlertScreen
 import com.normie69K.v_guard.ui.screens.dashboard.DashboardScreen
 import com.normie69K.v_guard.ui.screens.setup.EmergencyContactsScreen
 import com.normie69K.v_guard.ui.screens.setup.LinkDeviceScreen
+import com.normie69K.v_guard.ui.screens.auth.RegisterScreen
 
 @Composable
 fun AppNavigation(startDestination: String = "splash") {
@@ -35,12 +36,27 @@ fun AppNavigation(startDestination: String = "splash") {
         }
 
         // ── Login (email/password) ────────────────────────────────────────────
+// ── Login (email/password) ────────────────────────────────────────────
         composable("login") {
             LoginScreen(
-                onLoginSuccess         = {
+                onLoginSuccess = {
                     navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
                 },
-                onNavigateToPhoneAuth  = { navController.navigate("otp") }
+                onNavigateToPhoneAuth = { navController.navigate("otp") },
+                onNavigateToRegister = { navController.navigate("register") } // <-- Add this line
+            )
+        }
+
+        // ── Register (new) ────────────────────────────────────────────────────
+        composable("register") {
+            RegisterScreen(
+                onRegisterSuccess = {
+                    // Registration successful, send to link device screen
+                    navController.navigate("link_device") { popUpTo("register") { inclusive = true } }
+                },
+                onNavigateToLogin = {
+                    navController.popBackStack() // Go back to login screen
+                }
             )
         }
 

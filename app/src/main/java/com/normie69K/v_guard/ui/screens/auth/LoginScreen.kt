@@ -1,5 +1,9 @@
 package com.normie69K.v_guard.ui.screens.auth
 
+import android.app.Activity
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,18 +15,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.normie69K.v_guard.data.repository.AuthRepository
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    onNavigateToPhoneAuth: () -> Unit
+    onNavigateToPhoneAuth: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
+    // REQUIRED FOR GOOGLE LOGIN:
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository() }
     val auth = FirebaseAuth.getInstance()
 
     var email           by remember { mutableStateOf("") }
@@ -30,6 +43,51 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading       by remember { mutableStateOf(false) }
     var errorMessage    by remember { mutableStateOf("") }
+
+    // Fixed the double ".apps.googleusercontent.com"
+    val webClientId = "132500161718-7hqjuonnarjnlsomg58b7efebpl7egim.apps.googleusercontent.com"
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account?.idToken
+                if (idToken != null) {
+                    isLoading = true
+                    authRepository.signInWithGoogle(
+                        idToken = idToken,
+                        onSuccess = { onLoginSuccess() },
+                        onFailure = { err ->
+                            isLoading = false
+                            errorMessage = err
+                        }
+                    )
+                } else {
+                    errorMessage = "Google Sign-In failed: No ID Token"
+                }
+            } catch (e: ApiException) {
+                isLoading = false
+                Log.e("GoogleSignIn", "Google sign in failed", e)
+                errorMessage = "Google sign in failed: ${e.message}"
+            }
+        } else {
+            isLoading = false
+        }
+    }
+
+    fun launchGoogleSignIn() {
+        isLoading = true
+        errorMessage = ""
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(webClientId)
+            .requestEmail()
+            .build()
+        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+    }
 
     fun attemptLogin() {
         when {
@@ -176,6 +234,27 @@ fun LoginScreen(
             Icon(Icons.Default.Phone, null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
             Text("Continue with Phone Number", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Google Auth Button (MISSING IN YOUR SNIPPET) ──────────────────────
+        OutlinedButton(
+            onClick  = { launchGoogleSignIn() },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape    = RoundedCornerShape(14.dp),
+            enabled  = !isLoading
+        ) {
+            Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Continue with Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Register Link ─────────────────────────────────────────────────────
+        TextButton(onClick = onNavigateToRegister) {
+            Text("Don't have an account? Sign Up", color = MaterialTheme.colorScheme.primary)
         }
     }
 }
