@@ -1,47 +1,36 @@
-package com.normie69K.v_guard
+package com.normie69K.v_guard // Ensure this matches your actual project package
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.normie69K.v_guard.ui.navigation.AppNavigation
 import com.normie69K.v_guard.ui.theme.VguardTheme
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // 1. Check the intent INSIDE onCreate
+        val isCrashDetected = intent.getBooleanExtra("CRASH_DETECTED", false)
+
+        // 2. Decide where the app should start
+        val startRoute = if (isCrashDetected) "alert" else "splash"
+
         setContent {
             VguardTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // 3. Pass the route into your Navigation graph
+                    AppNavigation(startDestination = startRoute)
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    VguardTheme {
-        Greeting("Android")
     }
 }

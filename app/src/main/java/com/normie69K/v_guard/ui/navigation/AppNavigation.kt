@@ -9,10 +9,10 @@ import com.normie69K.v_guard.ui.screens.auth.SplashScreen
 
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(startDestination : String = "splash") {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "splash") {
+    NavHost(navController = navController, startDestination = startDestination) {
         composable("splash") {
             SplashScreen(onNavigateToLogin = {
                 navController.navigate("login") { popUpTo("splash") { inclusive = true } }
