@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.normie69K.v_guard" />
+                  <option name="mobileSdkAppId" value="1:132500161718:android:e79ab9583d8061357e9217" />
+                  <option name="projectId" value="v-guard-e57f8" />
+                  <option name="projectNumber" value="132500161718" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

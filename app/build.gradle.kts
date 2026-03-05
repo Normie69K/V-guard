@@ -63,7 +63,9 @@ dependencies {
     // 4. Google Maps & Location
     implementation(libs.maps.compose)          // Maps for Compose
     implementation(libs.play.services.maps)    // Base Maps SDK
-    implementation(libs.play.services.location) // To get phone's location
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.compose.animation.core.lint) // To get phone's location
+    implementation("br.com.devsrsouza.compose.icons:font-awesome:1.1.1")
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

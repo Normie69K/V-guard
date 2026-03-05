@@ -17,6 +17,7 @@ mapsCompose = "8.2.0"
 navigationCompose = "2.9.7"
 playServicesLocation = "21.3.0"
 playServicesMaps = "20.0.0"
+animationCoreLint = "1.10.4"
 
 [libraries]
 androidx-activity-compose-v182 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
@@ -48,6 +49,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
+androidx-compose-animation-core-lint = { group = "androidx.compose.animation", name = "animation-core-lint", version.ref = "animationCoreLint" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
