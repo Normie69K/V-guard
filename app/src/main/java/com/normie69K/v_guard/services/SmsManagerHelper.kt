@@ -1,29 +1,49 @@
 package com.normie69K.v_guard.services
 
 import android.content.Context
+import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 
 class SmsManagerHelper(private val context: Context) {
 
+    companion object {
+        private const val TAG = "SmsManagerHelper"
+    }
+
     fun sendEmergencySms(phoneNumbers: List<String>, lat: Double, lng: Double) {
+        if (phoneNumbers.isEmpty()) {
+            Log.w(TAG, "No emergency contacts configured — SMS not sent")
+            return
+        }
+
         try {
-            // Modern way to call SmsManager for Android 12+ (API 31+)
-            val smsManager: SmsManager = context.getSystemService(SmsManager::class.java)
+            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // API 31+ — use context-based factory
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
 
-            // Format the exact coordinates into a clickable URL
             val mapsLink = "https://maps.google.com/?q=$lat,$lng"
+            val message  = buildString {
+                append("🚨 EMERGENCY ALERT\n")
+                append("A vehicle has detected a severe accident!\n")
+                append("Immediate assistance may be required.\n\n")
+                append("📍 Last known location:\n$mapsLink")
+            }
 
-            // The SOS Payload
-            val message = "🚨 EMERGENCY ALERT: Karan's vehicle has detected a severe accident! Immediate assistance required. Location: $mapsLink"
+            // SmsManager.sendTextMessage has a ~160-char limit per part.
+            // Use sendMultipartTextMessage to avoid truncation.
+            val parts = smsManager.divideMessage(message)
 
-            // Dispatch to all saved contacts
             for (number in phoneNumbers) {
-                smsManager.sendTextMessage(number, null, message, null, null)
-                Log.d("SmsManagerHelper", "SOS payload dispatched to $number")
+                smsManager.sendMultipartTextMessage(number, null, parts, null, null)
+                Log.d(TAG, "SOS dispatched → $number")
             }
         } catch (e: Exception) {
-            Log.e("SmsManagerHelper", "Critical Failure - SMS not sent: ${e.message}")
+            Log.e(TAG, "SMS dispatch failed: ${e.message}", e)
         }
     }
 }

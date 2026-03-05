@@ -1,5 +1,8 @@
 package com.normie69K.v_guard.ui.screens.auth
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,146 +16,166 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lint.kotlin.metadata.Visibility
-import compose.icons.FontAwesomeIcons
-import compose.icons.fontawesomeicons.Brands
-import compose.icons.fontawesomeicons.brands.Google
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToPhoneAuth: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) } // UX Polish: Password toggle
+    val auth = FirebaseAuth.getInstance()
+
+    var email           by remember { mutableStateOf("") }
+    var password        by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var isLoading       by remember { mutableStateOf(false) }
+    var errorMessage    by remember { mutableStateOf("") }
+
+    fun attemptLogin() {
+        when {
+            email.isBlank()    -> { errorMessage = "Email cannot be empty"; return }
+            password.isBlank() -> { errorMessage = "Password cannot be empty"; return }
+        }
+        isLoading    = true
+        errorMessage = ""
+        auth.signInWithEmailAndPassword(email.trim(), password)
+            .addOnSuccessListener { onLoginSuccess() }
+            .addOnFailureListener { e ->
+                isLoading    = false
+                errorMessage = e.message ?: "Sign-in failed. Please try again."
+            }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 28.dp),
+        verticalArrangement    = Arrangement.Center,
+        horizontalAlignment    = Alignment.CenterHorizontally
     ) {
-        // --- HEADER SECTION ---
+        // ── Header ───────────────────────────────────────────────────────────
         Icon(
-            imageVector = Icons.Default.Shield, // Represents security/guard
-            contentDescription = "App Logo",
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary
+            imageVector     = Icons.Default.Security,
+            contentDescription = "V-Guard Logo",
+            modifier        = Modifier.size(80.dp),
+            tint            = MaterialTheme.colorScheme.primary
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
-            text = "V-Guard",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.primary
+            "V-Guard",
+            style      = MaterialTheme.typography.displayLarge,
+            color      = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Secure Vehicle Monitoring",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 16.sp
+            "Secure Vehicle Monitoring",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(Modifier.height(48.dp))
 
-        // --- EMAIL & PASSWORD SECTION ---
+        // ── Email field ───────────────────────────────────────────────────────
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email Address") },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Icon") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
+            value           = email,
+            onValueChange   = { email = it; errorMessage = "" },
+            label           = { Text("Email Address") },
+            leadingIcon     = { Icon(Icons.Default.Email, null) },
+            modifier        = Modifier.fillMaxWidth(),
+            shape           = RoundedCornerShape(14.dp),
+            singleLine      = true,
+            isError         = errorMessage.isNotEmpty()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
+        // ── Password field ────────────────────────────────────────────────────
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Lock Icon") },
-            trailingIcon = {
-                val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+            value               = password,
+            onValueChange       = { password = it; errorMessage = "" },
+            label               = { Text("Password") },
+            leadingIcon         = { Icon(Icons.Default.Lock, null) },
+            trailingIcon        = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = "Toggle Password Visibility")
+                    Icon(
+                        if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "Toggle password"
+                    )
                 }
             },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
+            modifier            = Modifier.fillMaxWidth(),
+            shape               = RoundedCornerShape(14.dp),
+            singleLine          = true,
+            isError             = errorMessage.isNotEmpty()
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // ── Error message ─────────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible = errorMessage.isNotEmpty(),
+            enter   = fadeIn(),
+            exit    = fadeOut()
+        ) {
+            Text(
+                text     = errorMessage,
+                color    = MaterialTheme.colorScheme.error,
+                style    = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, start = 4.dp)
+            )
+        }
 
+        Spacer(Modifier.height(28.dp))
+
+        // ── Sign In button ────────────────────────────────────────────────────
         Button(
-            onClick = { onLoginSuccess() },
+            onClick  = { attemptLogin() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape   = RoundedCornerShape(14.dp),
+            enabled = !isLoading
         ) {
-            Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color       = MaterialTheme.colorScheme.onPrimary,
+                    modifier    = Modifier.size(22.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Sign In", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(Modifier.height(36.dp))
 
-        // --- DIVIDER SECTION ---
+        // ── Divider ───────────────────────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier          = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
             Text(
-                text = "Or continue with",
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp
+                "  or  ",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(Modifier.height(28.dp))
 
-        // --- SOCIAL AUTH SECTION ---
-        // Google Button
+        // ── Phone auth button ─────────────────────────────────────────────────
         OutlinedButton(
-            onClick = { /* TODO: Google Auth */ },
+            onClick  = { onNavigateToPhoneAuth() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape    = RoundedCornerShape(14.dp)
         ) {
-            Icon(
-                imageVector = FontAwesomeIcons.Brands.Google,
-                contentDescription = "Google Logo",
-                modifier = Modifier.size(24.dp),
-                tint = Color.Unspecified
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Phone Button
-        OutlinedButton(
-            onClick = { onNavigateToPhoneAuth() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Phone,
-                contentDescription = "Phone Icon",
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Phone Number", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Icon(Icons.Default.Phone, null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Continue with Phone Number", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

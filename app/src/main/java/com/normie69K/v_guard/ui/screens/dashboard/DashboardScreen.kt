@@ -1,83 +1,278 @@
 package com.normie69K.v_guard.ui.screens.dashboard
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun DashboardScreen() {
-    // Defaulting to a central coordinate for now.
-    // Later, this will be dynamically updated from Firebase!
-    val vehicleLocation = LatLng(19.0760, 72.8777)
+fun DashboardScreen(
+    onCrashDetected: (lat: Double, lng: Double) -> Unit,
+    onLogout: () -> Unit,
+    viewModel: DashboardViewModel = viewModel()
+) {
+    val status by viewModel.vehicleStatus.collectAsState()
+    val espId  by viewModel.espId.collectAsState()
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(vehicleLocation, 14f)
+    // Navigate to alert when crash flag fires — only once per event
+    var crashHandled by remember { mutableStateOf(false) }
+    LaunchedEffect(status.isAccident) {
+        if (status.isAccident && !crashHandled) {
+            crashHandled = true
+            onCrashDetected(status.latitude, status.longitude)
+        }
+        if (!status.isAccident) crashHandled = false
     }
 
-    // State variables representing data we will pull from Firebase
-    var isOnline by remember { mutableStateOf(true) }
-    var hasAccident by remember { mutableStateOf(false) }
+    val fallbackLat = 19.0760
+    val fallbackLng = 72.8777
+    val vehicleLocation = LatLng(
+        if (status.latitude  != 0.0) status.latitude  else fallbackLat,
+        if (status.longitude != 0.0) status.longitude else fallbackLng
+    )
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(vehicleLocation, 15f)
+    }
+    LaunchedEffect(vehicleLocation) {
+        cameraPositionState.animate(CameraUpdateFactory.newLatLng(vehicleLocation))
+    }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // 1. Top Status Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = if (hasAccident) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant,
-            shadowElevation = 4.dp
+    val isAlert = status.isAccident
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // ── Top bar ──────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Vehicle Status",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = if (hasAccident) "ACCIDENT DETECTED" else if (isOnline) "System Online - Safe" else "System Offline",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (hasAccident) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                if (hasAccident) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(32.dp)
-                    )
+            Column {
+                Text(
+                    "V-Guard",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    if (espId.isNotBlank()) "Device: ${espId.take(12)}…" else "Linking device…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusBadge(isAlert)
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onLogout) {
+                    Icon(Icons.Default.Logout, "Logout", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
-        // 2. Google Map Integration
-        GoogleMap(
-            modifier = Modifier.weight(1f), // Takes up the rest of the screen
-            cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(zoomControlsEnabled = false)
+        // ── Status card ──────────────────────────────────────────────────────
+        AnimatedContent(
+            targetState = isAlert,
+            transitionSpec = { fadeIn() togetherWith fadeOut() }
+        ) { alert ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (alert)
+                        MaterialTheme.colorScheme.errorContainer
+                    else
+                        MaterialTheme.colorScheme.primaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (alert) Icons.Default.Warning else Icons.Default.Security,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = if (alert)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            if (alert) "⚠️  CRASH DETECTED" else "✅  Vehicle Secured",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = if (alert)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        val timeText = if (status.lastSeen > 0) {
+                            "Updated: ${SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(Date(status.lastSeen))}"
+                        } else "Waiting for device signal…"
+                        Text(
+                            timeText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Stats row ────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Marker(
-                state = MarkerState(position = vehicleLocation),
-                title = "ESP32 Node",
-                snippet = if (hasAccident) "Crash Location!" else "Last Known Location"
+            StatCard(
+                modifier    = Modifier.weight(1f),
+                icon        = Icons.Default.GpsFixed,
+                label       = "GPS",
+                value       = if (status.latitude != 0.0) "Active" else "N/A",
+                highlighted = status.latitude != 0.0
+            )
+            StatCard(
+                modifier    = Modifier.weight(1f),
+                icon        = Icons.Default.Wifi,
+                label       = "Signal",
+                value       = if (status.wifiSignal != 0) "${status.wifiSignal} dBm" else "—",
+                highlighted = false
             )
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Map ──────────────────────────────────────────────────────────────
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 4.dp)
+                .padding(bottom = 16.dp),
+            shape     = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(6.dp)
+        ) {
+            GoogleMap(
+                modifier            = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState
+            ) {
+                Marker(
+                    state   = MarkerState(position = vehicleLocation),
+                    title   = "My Vehicle",
+                    snippet = if (status.lastSeen > 0)
+                        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(status.lastSeen))
+                    else
+                        "Awaiting signal"
+                )
+            }
+        }
+    }
+}
+
+// ── Reusable stat card ────────────────────────────────────────────────────────
+
+@Composable
+private fun StatCard(
+    modifier: Modifier    = Modifier,
+    icon: ImageVector,
+    label: String,
+    value: String,
+    highlighted: Boolean
+) {
+    Card(
+        modifier  = modifier,
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier          = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier        = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (highlighted)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon, null,
+                    modifier = Modifier.size(18.dp),
+                    tint     = if (highlighted)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+// ── Live status badge ─────────────────────────────────────────────────────────
+
+@Composable
+private fun StatusBadge(isAlert: Boolean) {
+    val color = if (isAlert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val bg    = if (isAlert) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            if (isAlert) "ALERT" else "LIVE",
+            style       = MaterialTheme.typography.labelLarge,
+            color       = color,
+            fontWeight  = FontWeight.ExtraBold
+        )
     }
 }

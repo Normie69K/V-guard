@@ -8,46 +8,85 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 
 class AccidentMonitorService : Service() {
 
-    private val CHANNEL_ID = "GuardianDrive_Monitor"
-    // TODO: In production, retrieve this from the user's profile
-    private val espMacAddress = "ESP32_MAC_123"
+    companion object {
+        private const val CHANNEL_ID  = "VGuard_Monitor"
+        private const val NOTIF_ID    = 1001
+        private const val TAG         = "AccidentMonitorService"
+    }
+
+    private var accidentListener: ValueEventListener? = null
+    private var accidentRef: DatabaseReference?       = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(1, createNotification())
-
-        listenForAccidents()
+        startForeground(NOTIF_ID, buildNotification())
+        fetchEspIdAndStartListening()
     }
 
-    private fun listenForAccidents() {
-        val databaseRef = FirebaseDatabase.getInstance().getReference("devices/$espMacAddress/status/is_accident")
+    // ── Step 1: read the user's linked ESP ID from Firebase ──────────────────
 
-        databaseRef.addValueEventListener(object : ValueEventListener {
+    private fun fetchEspIdAndStartListening() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            Log.w(TAG, "No authenticated user — service cannot monitor")
+            stopSelf()
+            return
+        }
+
+        FirebaseDatabase.getInstance()
+            .getReference("users/$uid/linkedEspId")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val espId = snapshot.getValue(String::class.java)
+                    if (!espId.isNullOrBlank()) {
+                        listenForAccident(espId)
+                    } else {
+                        Log.w(TAG, "No ESP ID linked to account — stopping service")
+                        stopSelf()
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Failed to read ESP ID: ${error.message}")
+                    stopSelf()
+                }
+            })
+    }
+
+    // ── Step 2: attach a persistent listener to the crash flag ───────────────
+
+    private fun listenForAccident(espId: String) {
+        val ref = FirebaseDatabase.getInstance()
+            .getReference("devices/$espId/status/is_accident")
+
+        val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val hasCrashed = snapshot.getValue(Boolean::class.java) ?: false
                 if (hasCrashed) {
-                    triggerEmergencyUI()
+                    Log.d(TAG, "Crash flag detected for $espId — launching alert UI")
+                    launchAlertScreen()
                 }
             }
-
             override fun onCancelled(error: DatabaseError) {
-                // Handle database read error
+                Log.e(TAG, "Listener cancelled: ${error.message}")
             }
-        })
+        }
+
+        ref.addValueEventListener(listener)
+        accidentRef      = ref
+        accidentListener = listener
     }
 
-    private fun triggerEmergencyUI() {
-        // This launches the app immediately, even from the background
+    // ── Launch the alert screen even from the background ────────────────────
+
+    private fun launchAlertScreen() {
         val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("CRASH_DETECTED", true)
@@ -55,14 +94,16 @@ class AccidentMonitorService : Service() {
         startActivity(intent)
     }
 
-    private fun createNotification(): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("GuardianDrive Active")
-            .setContentText("Monitoring vehicle status in real-time...")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with your app icon later
+    // ── Notification ──────────────────────────────────────────────────────────
+
+    private fun buildNotification(): Notification =
+        NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("V-Guard Active")
+            .setContentText("Monitoring vehicle status in real-time…")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
             .build()
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -71,16 +112,19 @@ class AccidentMonitorService : Service() {
                 "Vehicle Monitoring Service",
                 NotificationManager.IMPORTANCE_LOW
             )
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY // Ensures the service restarts if the system kills it
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+
+    override fun onDestroy() {
+        super.onDestroy()
+        accidentListener?.let { accidentRef?.removeEventListener(it) }
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null // We don't need bound services for this
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 }

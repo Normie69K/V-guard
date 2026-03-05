@@ -1,22 +1,21 @@
+// App-level build.gradle.kts  (inside /app)
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")   // ← No version here; it's declared in the root
 }
 
 android {
-    namespace = "com.normie69K.v_guard"
-    compileSdk {
-        version = release(36)
-    }
+    namespace  = "com.normie69K.v_guard"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.normie69K.v_guard"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
-
+        applicationId             = "com.normie69K.v_guard"
+        minSdk                    = 26
+        targetSdk                 = 36
+        versionCode               = 1
+        versionName               = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -29,6 +28,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -42,36 +42,41 @@ android {
 }
 
 dependencies {
-    // 1. Core Android & Compose
-    implementation(libs.androidx.core.ktx.v1120)
-    implementation(libs.androidx.lifecycle.runtime.ktx.v270)
-    implementation(libs.androidx.activity.compose.v182)
-    implementation(platform(libs.androidx.compose.bom.v20240200))
+    // ── Core Android & Compose ────────────────────────────────────────────────
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // 2. Compose Navigation (Crucial for our AppNavigation.kt)
+    // ── Material Icons Extended (Visibility, Security, Cable, Contacts…) ──────
+    implementation(libs.androidx.material.icons.extended)
+
+    // ── ViewModel + Compose integration ──────────────────────────────────────
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // ── Compose Navigation ────────────────────────────────────────────────────
     implementation(libs.androidx.navigation.compose)
 
-    // 3. Firebase (Using the BoM so we don't need to specify versions for each)
+    // ── Firebase (BoM manages all versions) ───────────────────────────────────
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)       // For Login/Register
-    implementation(libs.firebase.database)   // For Realtime ESP32 Data
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.database.ktx)
 
-    // 4. Google Maps & Location
-    implementation(libs.maps.compose)          // Maps for Compose
-    implementation(libs.play.services.maps)    // Base Maps SDK
+    // ── Google Maps & Location ────────────────────────────────────────────────
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
-    implementation(libs.androidx.compose.animation.core.lint) // To get phone's location
-    implementation("br.com.devsrsouza.compose.icons:font-awesome:1.1.1")
 
+    // ── Testing ───────────────────────────────────────────────────────────────
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
 }
