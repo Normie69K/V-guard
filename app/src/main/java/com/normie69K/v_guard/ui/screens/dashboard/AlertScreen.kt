@@ -9,20 +9,46 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext // IMPORTANT IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.normie69K.v_guard.services.SmsManagerHelper // Ensure this is imported
 
 @Composable
 fun AlertScreen(
     onCancelAlert: () -> Unit,
     onTriggerSos: () -> Unit
 ) {
+    // Grab the Compose context to pass to the SMS Helper
+    val context = LocalContext.current
+
     // 15-second countdown timer
     var timeLeft by remember { mutableIntStateOf(15) }
     var isCancelled by remember { mutableStateOf(false) }
+
+    // Centralized function to fire the SMS to avoid duplicate code
+    val fireSosAction = {
+        if (!isCancelled) {
+            isCancelled = true // Lock the state so it doesn't fire twice
+
+            // 1. Initialize the Helper
+            val smsHelper = SmsManagerHelper(context)
+
+            // 2. Fetch Data (Hardcoded for now, pull from Firebase later)
+            val emergencyContacts = listOf("+919876543210", "+919876543211")
+            val crashLat = 19.0760
+            val crashLng = 72.8777
+
+            // 3. Dispatch the SMS
+            smsHelper.sendEmergencySms(emergencyContacts, crashLat, crashLng)
+
+            // 4. Tell the Navigation graph we are done (optional)
+            onTriggerSos()
+        }
+    }
 
     // This effect runs the countdown
     LaunchedEffect(key1 = timeLeft, key2 = isCancelled) {
@@ -32,7 +58,7 @@ fun AlertScreen(
                 timeLeft--
             } else {
                 // Timer hit 0, trigger the emergency protocol automatically!
-                onTriggerSos()
+                fireSosAction()
             }
         }
     }
@@ -87,7 +113,7 @@ fun AlertScreen(
         Button(
             onClick = {
                 isCancelled = true
-                onCancelAlert() // This should update Firebase 'is_accident' back to false
+                onCancelAlert() // Updates Firebase 'is_accident' back to false
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -102,8 +128,7 @@ fun AlertScreen(
         // Immediate SOS Button
         Button(
             onClick = {
-                isCancelled = true
-                onTriggerSos()
+                fireSosAction() // Instantly fires the SMS bypassing the timer
             },
             modifier = Modifier
                 .fillMaxWidth()
