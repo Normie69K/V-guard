@@ -89,6 +89,31 @@ class FirebaseDbHelper {
                 override fun onCancelled(error: DatabaseError) { onResult(null) }
             })
     }
+// ── Fetch Trip History ────────────────────────────────────────────────────
+
+    fun getDeviceHistory(espId: String, onResult: (List<com.google.android.gms.maps.model.LatLng>) -> Unit) {
+        database.child("devices").child(espId).child("history")
+            .orderByKey()
+            .limitToLast(500)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val points = mutableListOf<com.google.android.gms.maps.model.LatLng>()
+                    for (child in snapshot.children) {
+                        // SAFELY handle both Longs and Doubles to prevent DatabaseException crashes
+                        val lat = child.child("latitude").value?.toString()?.toDoubleOrNull()
+                        val lng = child.child("longitude").value?.toString()?.toDoubleOrNull()
+
+                        if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+                            points.add(com.google.android.gms.maps.model.LatLng(lat, lng))
+                        }
+                    }
+                    onResult(points)
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    onResult(emptyList())
+                }
+            })
+    }
 
     // ── Remove ESP32 device ───────────────────────────────────────────────────
     fun removeLinkedDevice(
