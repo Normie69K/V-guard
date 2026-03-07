@@ -15,8 +15,9 @@ import com.normie69K.v_guard.ui.screens.dashboard.DashboardScreen
 import com.normie69K.v_guard.ui.screens.setup.EmergencyContactsScreen
 import com.normie69K.v_guard.ui.screens.setup.LinkDeviceScreen
 import com.normie69K.v_guard.ui.screens.auth.RegisterScreen
-import com.normie69K.v_guard.ui.screens.auth.ForgotPasswordScreen // <-- ADDED THIS IMPORT
+import com.normie69K.v_guard.ui.screens.auth.ForgotPasswordScreen
 import com.normie69K.v_guard.ui.screens.settings.SettingsScreen
+import com.normie69K.v_guard.ui.screens.settings.TripHistoryScreen
 
 @Composable
 fun AppNavigation(startDestination: String = "splash") {
@@ -60,11 +61,10 @@ fun AppNavigation(startDestination: String = "splash") {
         composable("register") {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // Registration successful, send to link device screen
                     navController.navigate("link_device") { popUpTo("register") { inclusive = true } }
                 },
                 onNavigateToLogin = {
-                    navController.popBackStack() // Go back to login screen
+                    navController.popBackStack()
                 }
             )
         }
@@ -126,7 +126,14 @@ fun AppNavigation(startDestination: String = "splash") {
             SettingsScreen(
                 onNavigateToLinkDevice = { navController.navigate("link_device") },
                 onNavigateToContacts   = { navController.navigate("emergency_contacts") },
-                onBack                 = { navController.popBackStack() }
+                onBack                 = { navController.popBackStack() },
+                onNavigateToHistory = { navController.navigate("trip_history") }
+            )
+        }
+
+        composable("trip_history") {
+            TripHistoryScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

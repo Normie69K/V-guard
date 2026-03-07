@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.DeveloperBoard
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,15 +19,20 @@ import com.normie69K.v_guard.data.repository.FirebaseDbHelper
 fun SettingsScreen(
     onNavigateToLinkDevice: () -> Unit,
     onNavigateToContacts: () -> Unit,
+    onNavigateToHistory: () -> Unit, // <-- Added new navigation parameter
     onBack: () -> Unit
 ) {
     val dbHelper = remember { FirebaseDbHelper() }
-    var espId by remember { mutableStateOf<String>("Loading...") }
+    var deviceCountText by remember { mutableStateOf("Loading...") }
 
-    // Fetch the currently linked device ID to display it
+    // Fetch the list of linked devices to display the count (Fleet tracking update)
     LaunchedEffect(Unit) {
-        dbHelper.getLinkedEspId { id ->
-            espId = if (!id.isNullOrBlank()) id else "No device linked"
+        dbHelper.getLinkedDevices { devices ->
+            deviceCountText = if (devices.isNotEmpty()) {
+                "${devices.size} vehicle(s) linked"
+            } else {
+                "No vehicles linked"
+            }
         }
     }
 
@@ -47,11 +53,23 @@ fun SettingsScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            // ── Update Device Menu Item ───────────────────────────────────────
+
+            // ── Trip History Menu Item ────────────────────────────────────────
+            ListItem(
+                modifier = Modifier.clickable { onNavigateToHistory() },
+                headlineContent = { Text("Trip History") },
+                supportingContent = { Text("View recent routes and tracking data") },
+                leadingContent = { Icon(Icons.Default.Map, null, tint = MaterialTheme.colorScheme.primary) },
+                trailingContent = { Icon(Icons.Default.ChevronRight, null) }
+            )
+
+            HorizontalDivider()
+
+            // ── Manage Devices Menu Item ──────────────────────────────────────
             ListItem(
                 modifier = Modifier.clickable { onNavigateToLinkDevice() },
-                headlineContent = { Text("Manage ESP32 Device") },
-                supportingContent = { Text("Current: $espId") },
+                headlineContent = { Text("Manage ESP32 Devices") },
+                supportingContent = { Text(deviceCountText) },
                 leadingContent = { Icon(Icons.Default.DeveloperBoard, null, tint = MaterialTheme.colorScheme.primary) },
                 trailingContent = { Icon(Icons.Default.ChevronRight, null) }
             )
