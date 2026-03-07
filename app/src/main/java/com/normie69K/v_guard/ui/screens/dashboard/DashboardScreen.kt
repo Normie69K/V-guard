@@ -32,8 +32,6 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel()
 ) {
     val status by viewModel.vehicleStatus.collectAsState()
-
-    // Updated state variables for multiple devices
     val linkedDevices by viewModel.linkedDevices.collectAsState()
     val selectedEspId by viewModel.selectedEspId.collectAsState()
     var dropdownExpanded by remember { mutableStateOf(false) }
@@ -85,12 +83,12 @@ fun DashboardScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
 
-                // ── Device Selector Dropdown ─────────────────────────────────
+                // Dropdown to select vehicle
                 Box {
                     TextButton(
                         onClick = { dropdownExpanded = true },
                         contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier.offset(x = (-8).dp) // Aligns perfectly with title
+                        modifier = Modifier.offset(x = (-8).dp)
                     ) {
                         Text(
                             text = if (selectedEspId.isNotBlank()) "Vehicle: ${selectedEspId.take(8)} ▼" else "No devices linked",
@@ -131,9 +129,9 @@ fun DashboardScreen(
                     }
                 }
             }
-
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusBadge(isAlert)
+                // Pass accurate state to the badge
+                StatusBadge(espId = selectedEspId, isAlert = isAlert, lastSeen = status.lastSeen)
                 Spacer(Modifier.width(8.dp))
 
                 IconButton(onClick = onNavigateToSettings) {
@@ -151,17 +149,40 @@ fun DashboardScreen(
             targetState = isAlert,
             transitionSpec = { fadeIn() togetherWith fadeOut() }
         ) { alert ->
+
+            // Smarter Card Text logic
+            val cardTitle = when {
+                selectedEspId.isBlank() -> "No Vehicle Linked"
+                alert -> "⚠️  CRASH DETECTED"
+                status.lastSeen == 0L -> "⏳  Awaiting Signal..."
+                else -> "✅  Vehicle Secured"
+            }
+
+            val cardIcon = when {
+                selectedEspId.isBlank() -> Icons.Default.Info
+                alert -> Icons.Default.Warning
+                status.lastSeen == 0L -> Icons.Default.Wifi
+                else -> Icons.Default.Security
+            }
+
+            val cardColor = when {
+                alert -> MaterialTheme.colorScheme.errorContainer
+                selectedEspId.isBlank() || status.lastSeen == 0L -> MaterialTheme.colorScheme.surfaceVariant
+                else -> MaterialTheme.colorScheme.primaryContainer
+            }
+
+            val contentColor = when {
+                alert -> MaterialTheme.colorScheme.error
+                selectedEspId.isBlank() || status.lastSeen == 0L -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.primary
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (alert)
-                        MaterialTheme.colorScheme.errorContainer
-                    else
-                        MaterialTheme.colorScheme.primaryContainer
-                ),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
                 elevation = CardDefaults.cardElevation(6.dp)
             ) {
                 Row(
@@ -169,29 +190,25 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (alert) Icons.Default.Warning else Icons.Default.Security,
+                        imageVector = cardIcon,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = if (alert)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.primary
+                        tint = contentColor
                     )
                     Spacer(Modifier.width(16.dp))
                     Column {
                         Text(
-                            if (alert) "⚠️  CRASH DETECTED" else "✅  Vehicle Secured",
+                            text = cardTitle,
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,
-                            color = if (alert)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onPrimaryContainer
+                            color = contentColor
                         )
                         Spacer(Modifier.height(2.dp))
-                        val timeText = if (status.lastSeen > 0) {
-                            "Updated: ${SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(Date(status.lastSeen))}"
-                        } else "Waiting for device signal…"
+                        val timeText = when {
+                            selectedEspId.isBlank() -> "Go to Settings to add a device"
+                            status.lastSeen > 0 -> "Updated: ${SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(Date(status.lastSeen))}"
+                            else -> "Hardware is offline"
+                        }
                         Text(
                             timeText,
                             style = MaterialTheme.typography.bodyMedium,
@@ -244,7 +261,7 @@ fun DashboardScreen(
             ) {
                 Marker(
                     state   = MarkerState(position = vehicleLocation),
-                    title   = "My Vehicle (${selectedEspId.take(8)})", // Added selected device to marker
+                    title   = if (selectedEspId.isNotBlank()) "Vehicle (${selectedEspId.take(8)})" else "No Vehicle",
                     snippet = if (status.lastSeen > 0)
                         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(status.lastSeen))
                     else
@@ -308,9 +325,14 @@ private fun StatCard(
 // ── Live status badge ─────────────────────────────────────────────────────────
 
 @Composable
-private fun StatusBadge(isAlert: Boolean) {
-    val color = if (isAlert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-    val bg    = if (isAlert) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+private fun StatusBadge(espId: String, isAlert: Boolean, lastSeen: Long) {
+    // Determine the exact state text and colors
+    val (text, color, bg) = when {
+        espId.isBlank() -> Triple("NO DEVICE", MaterialTheme.colorScheme.onSurfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
+        isAlert -> Triple("ALERT", MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer)
+        lastSeen == 0L -> Triple("WAITING", MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.surfaceVariant)
+        else -> Triple("LIVE", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -322,7 +344,7 @@ private fun StatusBadge(isAlert: Boolean) {
         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
         Spacer(Modifier.width(6.dp))
         Text(
-            if (isAlert) "ALERT" else "LIVE",
+            text = text,
             style       = MaterialTheme.typography.labelLarge,
             color       = color,
             fontWeight  = FontWeight.ExtraBold
