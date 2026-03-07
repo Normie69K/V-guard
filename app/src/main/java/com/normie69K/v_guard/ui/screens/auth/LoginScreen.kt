@@ -81,6 +81,7 @@ fun LoginScreen(
             }
         } else {
             isLoading = false
+            errorMessage = "Google Login Cancelled (Code: ${result.resultCode})"
         }
     }
 

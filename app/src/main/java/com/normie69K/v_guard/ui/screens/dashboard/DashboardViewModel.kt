@@ -1,5 +1,6 @@
 package com.normie69K.v_guard.ui.screens.dashboard
 
+import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -20,6 +21,12 @@ class DashboardViewModel : ViewModel() {
 
     private var vehicleListener: ValueEventListener? = null
     private var vehicleRef: DatabaseReference?       = null
+
+    private val _linkedDevices = MutableStateFlow<List<String>>(emptyList())
+    val linkedDevices: StateFlow<List<String>> = _linkedDevices
+
+    private val _selectedEspId = MutableStateFlow("")
+    val selectedEspId: StateFlow<String> = _selectedEspId
 
     init {
         loadEspIdAndObserve()
@@ -52,8 +59,11 @@ class DashboardViewModel : ViewModel() {
         val ref = database.child("devices").child(espId).child("status")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                snapshot.getValue(VehicleStatus::class.java)?.let {
-                    _vehicleStatus.value = it
+                val status = snapshot.getValue(VehicleStatus::class.java)
+                if(status!= null){
+                    _vehicleStatus.value = status
+                }else{
+                    _vehicleStatus.value = VehicleStatus()
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
@@ -62,6 +72,35 @@ class DashboardViewModel : ViewModel() {
         ref.addValueEventListener(listener)
         vehicleRef      = ref
         vehicleListener = listener
+    }
+
+    init {
+        loadDevicesAndObserve()
+    }
+
+    private fun loadDevicesAndObserve() {
+        val uid = auth.currentUser?.uid ?: return
+
+        database.child("users").child(uid).child("linkedDevices")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val devices = snapshot.children.mapNotNull { it.getValue(String::class.java) }
+                    _linkedDevices.value = devices
+                    if(devices.isEmpty()){
+                        _selectedEspId.value = ""
+                        _vehicleStatus.value = VehicleStatus()
+                        vehicleListener?.let { vehicleRef?.removeEventListener(it) }
+                    } else if(_selectedEspId.value !in devices){
+                        selectDevice(devices.first())
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    fun selectDevice(espId: String) {
+        _selectedEspId.value = espId
+        observeVehicle(espId) // Fetch GPS data for the newly selected device
     }
 
     // ── Reset the crash flag in Firebase so the alert doesn't re-trigger ─────

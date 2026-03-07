@@ -32,7 +32,11 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel()
 ) {
     val status by viewModel.vehicleStatus.collectAsState()
-    val espId  by viewModel.espId.collectAsState()
+
+    // Updated state variables for multiple devices
+    val linkedDevices by viewModel.linkedDevices.collectAsState()
+    val selectedEspId by viewModel.selectedEspId.collectAsState()
+    var dropdownExpanded by remember { mutableStateOf(false) }
 
     // Navigate to alert when crash flag fires — only once per event
     var crashHandled by remember { mutableStateOf(false) }
@@ -80,12 +84,54 @@ fun DashboardScreen(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold
                 )
-                Text(
-                    if (espId.isNotBlank()) "Device: ${espId.take(12)}…" else "Linking device…",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                // ── Device Selector Dropdown ─────────────────────────────────
+                Box {
+                    TextButton(
+                        onClick = { dropdownExpanded = true },
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.offset(x = (-8).dp) // Aligns perfectly with title
+                    ) {
+                        Text(
+                            text = if (selectedEspId.isNotBlank()) "Vehicle: ${selectedEspId.take(8)} ▼" else "No devices linked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false }
+                    ) {
+                        Text(
+                            text = "Connected Devices: ${linkedDevices.size}",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        HorizontalDivider()
+                        linkedDevices.forEach { deviceId ->
+                            DropdownMenuItem(
+                                text = { Text(if (deviceId == selectedEspId) "✅ $deviceId" else deviceId) },
+                                onClick = {
+                                    viewModel.selectDevice(deviceId)
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("+ Link New Vehicle") },
+                            onClick = {
+                                dropdownExpanded = false
+                                onNavigateToSettings()
+                            }
+                        )
+                    }
+                }
             }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(isAlert)
                 Spacer(Modifier.width(8.dp))
@@ -198,7 +244,7 @@ fun DashboardScreen(
             ) {
                 Marker(
                     state   = MarkerState(position = vehicleLocation),
-                    title   = "My Vehicle",
+                    title   = "My Vehicle (${selectedEspId.take(8)})", // Added selected device to marker
                     snippet = if (status.lastSeen > 0)
                         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(status.lastSeen))
                     else

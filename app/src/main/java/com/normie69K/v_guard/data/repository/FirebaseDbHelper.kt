@@ -11,8 +11,7 @@ class FirebaseDbHelper {
     private val auth     = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
 
-    // ── Link ESP32 device ─────────────────────────────────────────────────────
-
+    // ── Link ESP32 device (Appends to list) ───────────────────────────────────
     fun linkDeviceToUser(
         espId: String,
         onSuccess: () -> Unit,
@@ -21,10 +20,32 @@ class FirebaseDbHelper {
         val userId = auth.currentUser?.uid
         if (userId == null) { onFailure("User not logged in"); return }
 
-        // Field name must match the User data-class field  →  linkedEspId
-        database.child("users").child(userId).child("linkedEspId").setValue(espId)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { e -> onFailure(e.message ?: "Failed to link device") }
+        // Fetch current list first, then append
+        getLinkedDevices { currentDevices ->
+            if (currentDevices.contains(espId)) {
+                onFailure("Device is already linked!")
+                return@getLinkedDevices
+            }
+
+            val updatedList = currentDevices + espId
+            database.child("users").child(userId).child("linkedDevices").setValue(updatedList)
+                .addOnSuccessListener { onSuccess() }
+                .addOnFailureListener { e -> onFailure(e.message ?: "Failed to link device") }
+        }
+    }
+
+    // ── Fetch all linked devices ──────────────────────────────────────────────
+    fun getLinkedDevices(onResult: (List<String>) -> Unit) {
+        val userId = auth.currentUser?.uid ?: run { onResult(emptyList()); return }
+
+        database.child("users").child(userId).child("linkedDevices")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val devices = snapshot.children.mapNotNull { it.getValue(String::class.java) }
+                    onResult(devices)
+                }
+                override fun onCancelled(error: DatabaseError) { onResult(emptyList()) }
+            })
     }
 
     // ── Emergency contacts ────────────────────────────────────────────────────
@@ -67,5 +88,22 @@ class FirebaseDbHelper {
                 }
                 override fun onCancelled(error: DatabaseError) { onResult(null) }
             })
+    }
+
+    // ── Remove ESP32 device ───────────────────────────────────────────────────
+    fun removeLinkedDevice(
+        espId: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) { onFailure("User not logged in"); return }
+
+        getLinkedDevices { currentDevices ->
+            val updatedList = currentDevices.filter { it != espId }
+            database.child("users").child(userId).child("linkedDevices").setValue(updatedList)
+                .addOnSuccessListener { onSuccess() }
+                .addOnFailureListener { e -> onFailure(e.message ?: "Failed to remove device") }
+        }
     }
 }
