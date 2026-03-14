@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -28,6 +30,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.normie69K.v_guard.data.repository.AuthRepository
+import com.normie69K.v_guard.R
 
 @Composable
 fun LoginScreen(
@@ -121,13 +124,6 @@ fun LoginScreen(
         horizontalAlignment    = Alignment.CenterHorizontally
     ) {
         // ── Header ───────────────────────────────────────────────────────────
-        Icon(
-            imageVector     = Icons.Default.Security,
-            contentDescription = "V-Guard Logo",
-            modifier        = Modifier.size(80.dp),
-            tint            = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(16.dp))
         Text(
             "V-Guard",
             style      = MaterialTheme.typography.displayLarge,

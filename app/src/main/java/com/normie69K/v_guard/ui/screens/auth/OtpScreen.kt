@@ -1,13 +1,11 @@
 package com.normie69K.v_guard.ui.screens.auth
 
 import android.app.Activity
-import androidx.compose.animation.*
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,12 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.FirebaseException
-import com.google.firebase.auth.*
-import java.util.concurrent.TimeUnit
+import com.normie69K.v_guard.data.repository.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,72 +25,27 @@ fun OtpScreen(
     onAuthSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-    val auth    = FirebaseAuth.getInstance()
+    val activity = context as? Activity
+    val authRepository = remember { AuthRepository() }
 
-    var isOtpSent       by remember { mutableStateOf(false) }
-    var phoneNumber     by remember { mutableStateOf("") }
-    var otpCode         by remember { mutableStateOf("") }
-    var isLoading       by remember { mutableStateOf(false) }
-    var errorMessage    by remember { mutableStateOf("") }
-    var verificationId  by remember { mutableStateOf("") }
+    // States
+    var phoneNumber by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("+91") }
+    var otpCode by remember { mutableStateOf("") }
 
-    // ── Firebase phone auth callbacks ─────────────────────────────────────────
-    val callbacks = remember {
-        object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-            override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                // Auto-verification (e.g. on emulators or same device)
-                auth.signInWithCredential(credential)
-                    .addOnSuccessListener { onAuthSuccess() }
-                    .addOnFailureListener { e -> errorMessage = e.message ?: "Verification failed" }
-            }
-            override fun onVerificationFailed(e: FirebaseException) {
-                isLoading    = false
-                errorMessage = e.message ?: "Failed to send code. Check your number."
-            }
-            override fun onCodeSent(id: String, token: PhoneAuthProvider.ForceResendingToken) {
-                verificationId = id
-                isLoading      = false
-                isOtpSent      = true
-                errorMessage   = ""
-            }
-        }
-    }
+    var isOtpSent by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    fun sendCode() {
-        if (phoneNumber.isBlank()) { errorMessage = "Enter a phone number"; return }
-        isLoading    = true
-        errorMessage = ""
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(phoneNumber.trim())
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(context as Activity)
-            .setCallbacks(callbacks)
-            .build()
-        PhoneAuthProvider.verifyPhoneNumber(options)
-    }
-
-    fun verifyCode() {
-        if (otpCode.length != 6) { errorMessage = "Enter the full 6-digit code"; return }
-        if (verificationId.isBlank()) { errorMessage = "Session expired. Go back and retry."; return }
-        isLoading    = true
-        errorMessage = ""
-        val credential = PhoneAuthProvider.getCredential(verificationId, otpCode)
-        auth.signInWithCredential(credential)
-            .addOnSuccessListener { isLoading = false; onAuthSuccess() }
-            .addOnFailureListener { e ->
-                isLoading    = false
-                errorMessage = e.message ?: "Incorrect code. Try again."
-            }
-    }
+    // Limits
+    var attemptCount by remember { mutableStateOf(0) }
+    val maxAttempts = 3
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isOtpSent) "Verify Code" else "Phone Login") },
+                title = { Text("Phone Verification") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (isOtpSent) { isOtpSent = false; otpCode = "" } else onBackToLogin()
-                    }) {
+                    IconButton(onClick = onBackToLogin) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
@@ -106,88 +56,148 @@ fun OtpScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 28.dp),
-            verticalArrangement    = Arrangement.Center,
-            horizontalAlignment    = Alignment.CenterHorizontally
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            AnimatedContent(targetState = isOtpSent, transitionSpec = {
-                slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
-            }) { otpSent ->
-                if (!otpSent) {
-                    // ── Step 1: phone number entry ────────────────────────────
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Phone, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(24.dp))
-                        Text("Enter Phone Number", style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "We'll send a 6-digit code to verify your number.",
-                            style     = MaterialTheme.typography.bodyMedium,
-                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(36.dp))
-                        OutlinedTextField(
-                            value         = phoneNumber,
-                            onValueChange = { phoneNumber = it; errorMessage = "" },
-                            label         = { Text("Phone (e.g. +91 98765 43210)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            modifier      = Modifier.fillMaxWidth(),
-                            shape         = RoundedCornerShape(14.dp),
-                            singleLine    = true,
-                            isError       = errorMessage.isNotEmpty()
-                        )
-                        if (errorMessage.isNotEmpty()) {
-                            Text(errorMessage, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 6.dp))
+            Text(
+                text = if (isOtpSent) "Enter Security Code" else "Secure Login",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (isOtpSent) "We've sent a 6-digit OTP to $countryCode $phoneNumber"
+                else "Enter your phone number to receive a verification code.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            if (!isOtpSent) {
+                // ── PHONE NUMBER INPUT ──
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    // Country Code
+                    OutlinedTextField(
+                        value = countryCode,
+                        onValueChange = { if (it.length <= 4) countryCode = it },
+                        label = { Text("Code") },
+                        modifier = Modifier.weight(0.3f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Phone Number
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { if (it.length <= 15) phoneNumber = it },
+                        label = { Text("Phone Number") },
+                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                        modifier = Modifier.weight(0.7f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (attemptCount >= maxAttempts) {
+                    Text(
+                        text = "You have reached the maximum number of attempts (3). Try again later.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        if (phoneNumber.isNotBlank() && activity != null) {
+                            isLoading = true
+                            attemptCount++
+                            val fullNumber = "$countryCode$phoneNumber"
+
+                            authRepository.sendOtp(
+                                phoneNumber = fullNumber,
+                                activity = activity,
+                                onCodeSent = {
+                                    isLoading = false
+                                    isOtpSent = true
+                                    Toast.makeText(context, "OTP Sent!", Toast.LENGTH_SHORT).show()
+                                },
+                                onVerificationFailed = { e ->
+                                    isLoading = false
+                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                },
+                                onVerificationCompleted = {
+                                    // Auto-verification succeeded
+                                    isLoading = false
+                                    onAuthSuccess()
+                                }
+                            )
+                        } else {
+                            Toast.makeText(context, "Enter a valid number", Toast.LENGTH_SHORT).show()
                         }
-                        Spacer(Modifier.height(28.dp))
-                        Button(
-                            onClick  = { sendCode() },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape    = RoundedCornerShape(14.dp),
-                            enabled  = !isLoading
-                        ) {
-                            if (isLoading) CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                            else Text("Send Verification Code", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !isLoading && attemptCount < maxAttempts && phoneNumber.isNotBlank()
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Send OTP (Attempt ${attemptCount}/$maxAttempts)")
                     }
-                } else {
-                    // ── Step 2: OTP entry ─────────────────────────────────────
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Message, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(24.dp))
-                        Text("Enter Verification Code", style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Sent to $phoneNumber",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(36.dp))
-                        OutlinedTextField(
-                            value         = otpCode,
-                            onValueChange = { if (it.length <= 6) { otpCode = it; errorMessage = "" } },
-                            label         = { Text("6-Digit Code") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier      = Modifier.fillMaxWidth(),
-                            shape         = RoundedCornerShape(14.dp),
-                            singleLine    = true,
-                            isError       = errorMessage.isNotEmpty()
-                        )
-                        if (errorMessage.isNotEmpty()) {
-                            Text(errorMessage, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 6.dp))
+                }
+
+            } else {
+                // ── OTP INPUT ──
+                OutlinedTextField(
+                    value = otpCode,
+                    onValueChange = { if (it.length <= 6) otpCode = it },
+                    label = { Text("6-Digit OTP") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        if (otpCode.length == 6) {
+                            isLoading = true
+                            authRepository.verifyOtp(
+                                code = otpCode,
+                                onSuccess = {
+                                    isLoading = false
+                                    Toast.makeText(context, "Verification Successful!", Toast.LENGTH_SHORT).show()
+                                    onAuthSuccess()
+                                },
+                                onFailure = { e ->
+                                    isLoading = false
+                                    Toast.makeText(context, "Invalid OTP", Toast.LENGTH_SHORT).show()
+                                }
+                            )
                         }
-                        Spacer(Modifier.height(28.dp))
-                        Button(
-                            onClick  = { verifyCode() },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape    = RoundedCornerShape(14.dp),
-                            enabled  = otpCode.length == 6 && !isLoading
-                        ) {
-                            if (isLoading) CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                            else Text("Verify & Sign In", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !isLoading && otpCode.length == 6
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Verify & Login")
                     }
+                }
+
+                TextButton(
+                    onClick = { isOtpSent = false },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text("Change Phone Number")
                 }
             }
         }
