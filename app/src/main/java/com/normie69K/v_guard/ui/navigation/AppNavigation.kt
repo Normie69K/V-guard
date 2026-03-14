@@ -18,6 +18,7 @@ import com.normie69K.v_guard.ui.screens.auth.RegisterScreen
 import com.normie69K.v_guard.ui.screens.auth.ForgotPasswordScreen
 import com.normie69K.v_guard.ui.screens.settings.SettingsScreen
 import com.normie69K.v_guard.ui.screens.settings.TripHistoryScreen
+import com.normie69K.v_guard.ui.screens.settings.AboutScreen
 
 @Composable
 fun AppNavigation(startDestination: String = "splash") {
@@ -127,12 +128,21 @@ fun AppNavigation(startDestination: String = "splash") {
                 onNavigateToLinkDevice = { navController.navigate("link_device") },
                 onNavigateToContacts   = { navController.navigate("emergency_contacts") },
                 onBack                 = { navController.popBackStack() },
-                onNavigateToHistory = { navController.navigate("trip_history") }
+                onNavigateToHistory    = { navController.navigate("trip_history") },
+                onNavigateToAbout      = { navController.navigate("about") }
             )
         }
 
+        // ── Trip History ──────────────────────────────────────────────────────
         composable("trip_history") {
             TripHistoryScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── About Screen ──────────────────────────────────────────────────────
+        composable("about") {
+            AboutScreen(
                 onBack = { navController.popBackStack() }
             )
         }

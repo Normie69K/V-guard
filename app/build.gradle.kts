@@ -14,7 +14,7 @@ android {
         minSdk                    = 26
         targetSdk                 = 36
         versionCode               = 1
-        versionName               = "1.1"
+        versionName               = "1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -25,6 +25,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -39,6 +40,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    dependenciesInfo{
+        includeInApk = false
+        includeInBundle = false
     }
 }
 
@@ -72,6 +78,8 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
 
     // ── Testing ───────────────────────────────────────────────────────────────
     testImplementation(libs.junit)

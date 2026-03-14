@@ -1,0 +1,14 @@
+V-Guard is an advanced, IoT-integrated vehicle safety application designed to provide crucial peace of mind for drivers and their loved ones. By seamlessly pairing with a custom ESP32 hardware module, V-Guard acts as a vigilant co-pilot, monitoring your vehicle's physical status in real-time and ensuring immediate action is taken in the event of an emergency.
+
+Whether you are on a daily commute or a long-distance road trip, V-Guard runs quietly in the background, ready to detect accidents and coordinate a rapid response when every second counts.
+
+🌟 Key Features:
+
+• Automatic Accident Detection: Integrates perfectly with your custom ESP32 hardware to instantly recognize impacts and severe vehicular anomalies.
+• Instant Emergency Alerts: In the event of an accident, V-Guard automatically dispatches urgent SMS alerts to your pre-configured emergency contacts, sharing your exact location to ensure help arrives quickly.
+• Real-Time Background Monitoring: A dedicated background service continuously monitors your vehicle's status without draining your battery or requiring the app to be open.
+• Interactive Trip History: Keep a secure log of your past journeys. Review routes, locations, and driving data on a comprehensive, interactive map.
+• Secure Hardware Linking: Easily and securely bind your physical ESP32 device to your personal V-Guard account via a streamlined setup process.
+• Intuitive Dashboard: A clean, modern interface gives you a complete overview of your vehicle's current security status at a glance.
+
+Take control of your road safety with an automated, reliable, and intelligent emergency response system.
